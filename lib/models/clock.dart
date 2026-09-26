@@ -6,7 +6,7 @@
 enum ClockOrder { equal, dominant, dominated, concurrent }
 
 class Clock {
-  Clock._();
+  Clock._(); // coverage:ignore-line
 
   static Map<String, int> tick(Map<String, int> clock, String deviceId) {
     final next = Map<String, int>.from(clock);

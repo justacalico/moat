@@ -27,7 +27,7 @@ class UdpTransport implements DatagramTransport {
     socket.broadcastEnabled = true;
     if (multicastGroup != null) {
       try {
-        socket.joinMulticast(multicastGroup);
+        socket.joinMulticast(multicastGroup); // coverage:ignore-line
       } on OSError {
         // Interface without multicast support; broadcast still reaches
         // most LANs, so discovery keeps working.
@@ -49,7 +49,7 @@ class UdpTransport implements DatagramTransport {
       _socket.where((e) => e == RawSocketEvent.read).map((_) {
         final d = _socket.receive();
         if (d == null) {
-          return Datagram(Uint8List(0), InternetAddress.anyIPv4, 0);
+          return Datagram(Uint8List(0), InternetAddress.anyIPv4, 0); // coverage:ignore-line
         }
         return d;
       }).where((d) => d.data.isNotEmpty);

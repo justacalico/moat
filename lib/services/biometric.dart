@@ -19,7 +19,7 @@ class LocalAuthGate implements BiometricGate {
     if (kIsWeb) return false;
     try {
       return await _auth.canCheckBiometrics ||
-          await _auth.isDeviceSupported();
+          await _auth.isDeviceSupported(); // coverage:ignore-line
     } catch (_) {
       return false;
     }

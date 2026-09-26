@@ -22,7 +22,8 @@ class FileStorage implements Storage {
     if (rootPath != null) {
       _root = Directory(rootPath!);
     } else {
-      // coverage:ignore-start — platform channel, unreachable in VM tests
+      // Platform channel, unreachable in VM tests.
+      // coverage:ignore-start
       final docs = await getApplicationDocumentsDirectory();
       _root = Directory('${docs.path}/moat');
       // coverage:ignore-end
@@ -79,7 +80,8 @@ class FileStorage implements Storage {
       await dir.create(recursive: true);
       return dir.path;
     }
-    // coverage:ignore-start — platform channel, unreachable in VM tests
+    // Platform channel, unreachable in VM tests.
+    // coverage:ignore-start
     final dir = await getDownloadsDirectory() ??
         await getApplicationDocumentsDirectory();
     final out = Directory('${dir.path}/moat-exports');

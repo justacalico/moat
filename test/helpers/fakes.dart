@@ -38,9 +38,12 @@ class FakeSyncEngine implements SyncEngine {
   Future<void> start() async => running = true;
   @override
   Future<void> stop() async => running = false;
+  String? pairCode;
   @override
   Future<void> pairWith(
-      SyncPeer peer, Future<String> Function() askCode) async {}
+      SyncPeer peer, Future<String> Function() askCode) async {
+    pairCode = await askCode();
+  }
   @override
   Future<void> syncNow() async => syncNowCalls++;
   @override

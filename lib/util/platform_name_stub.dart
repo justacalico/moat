@@ -1,2 +1,2 @@
-// coverage:ignore-file — web path, never imported by VM tests
+// coverage:ignore-file
 String platformDeviceName() => 'Moat web';

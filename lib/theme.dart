@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 /// neutrals, hairline dividers and one accent color the user can change.
 /// No gradients, no decorative color noise.
 class MoatTheme {
-  MoatTheme._();
+  MoatTheme._(); // coverage:ignore-line
 
   static const accentChoices = <int>[
     0xFF0A84FF, // blue

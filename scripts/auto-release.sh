@@ -14,7 +14,8 @@ git fetch origin main "+refs/tags/*:refs/tags/*"
 git checkout -B main origin/main
 git clean -fd
 
-if ! version=$(cog bump --dry-run --auto 2>/dev/null) || [ -z "$version" ]; then
+version=$(cog bump --dry-run --auto 2>/dev/null || true)
+if ! [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
   echo "No version bump required, skipping release"
   exit 0
 fi

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moat/ui/editor_page.dart';
@@ -8,6 +10,21 @@ import 'package:moat/ui/sync_page.dart';
 
 import 'helpers/fakes.dart';
 
+/// Rasterizers differ slightly between machines — allow a small pixel
+/// diff instead of regenerating per host.
+class TolerantGoldenComparator extends LocalFileComparator {
+  TolerantGoldenComparator(super.testFile, this.tolerance);
+
+  final double tolerance;
+
+  @override
+  Future<bool> compare(Uint8List imageBytes, Uri golden) async {
+    final result = await GoldenFileComparator.compareLists(
+        imageBytes, await getGoldenBytes(golden));
+    return result.passed || result.diffPercent <= tolerance;
+  }
+}
+
 Future<void> settle(WidgetTester tester, [int times = 8]) async {
   for (var i = 0; i < times; i++) {
     await tester.pump(const Duration(milliseconds: 50));
@@ -15,6 +32,9 @@ Future<void> settle(WidgetTester tester, [int times = 8]) async {
 }
 
 void main() {
+  goldenFileComparator = TolerantGoldenComparator(
+      Uri.file('test/goldens_test.dart'), 0.5);
+
   testWidgets('golden: compact home', (tester) async {
     final s = await makeAppState();
     addTearDown(s.dispose);

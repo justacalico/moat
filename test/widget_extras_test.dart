@@ -34,9 +34,12 @@ Future<void> settle(WidgetTester tester, [int times = 20]) async {
   }
 }
 
-Future<void> flushIo(WidgetTester tester) async {
-  for (var i = 0; i < 4; i++) {
-    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+Future<void> flushIo(WidgetTester tester,
+    {bool Function()? until, int maxRounds = 12}) async {
+  for (var i = 0; i < maxRounds; i++) {
+    if (until != null && until()) return;
+    await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 30)));
     await tester.pump();
   }
 }
@@ -739,7 +742,9 @@ void main() {
           size: const Size(800, 1600));
       await settle(tester, 5);
       await tester.tap(find.text('Import backup'));
-      await flushIo(tester);
+      await flushIo(tester,
+          until: () =>
+              find.textContaining('Imported').evaluate().isNotEmpty);
       await settle(tester);
       expect(find.textContaining('Imported'), findsOneWidget);
       await tester.pump(const Duration(seconds: 5));

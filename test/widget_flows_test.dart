@@ -29,12 +29,14 @@ Future<void> settle(WidgetTester tester, [int times = 20]) async {
 
 /// Real file IO and platform channels can't complete inside fake async;
 /// this gives the real event loop a beat to finish them.
-Future<void> flushIo(WidgetTester tester) async {
+Future<void> flushIo(WidgetTester tester,
+    {bool Function()? until, int maxRounds = 12}) async {
   // Each hop of an IO future chain (open/write/close) needs a real-loop
-  // turn plus a fake-zone microtask flush — alternate a few times.
-  for (var i = 0; i < 6; i++) {
+  // turn plus a fake-zone microtask flush — alternate until satisfied.
+  for (var i = 0; i < maxRounds; i++) {
+    if (until != null && until()) return;
     await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 200)));
+        () => Future<void>.delayed(const Duration(milliseconds: 100)));
     await tester.pump(const Duration(milliseconds: 50));
   }
 }
@@ -248,7 +250,8 @@ void main() {
           size: const Size(800, 1600));
       await settle(tester, 5);
       await tester.tap(find.text('Export backup'));
-      await flushIo(tester);
+      await flushIo(tester,
+          until: () => find.textContaining('Backup written to').evaluate().isNotEmpty);
       await settle(tester);
       expect(find.textContaining('Backup written to'), findsOneWidget);
       await pumpSnack(tester);
@@ -262,7 +265,8 @@ void main() {
           size: const Size(800, 1600));
       await settle(tester, 5);
       await tester.tap(find.text('Export backup'));
-      await flushIo(tester);
+      await flushIo(tester,
+          until: () => find.textContaining('Export failed').evaluate().isNotEmpty);
       await settle(tester);
       expect(find.textContaining('Export failed'), findsOneWidget);
       await pumpSnack(tester);
@@ -607,14 +611,16 @@ void main() {
       await tester.tap(find.byIcon(Icons.more_vert));
       await settle(tester);
       await tester.tap(find.text('Copy text'));
-      await flushIo(tester);
+      await flushIo(tester,
+          until: () => find.text('Copied').evaluate().isNotEmpty);
       await settle(tester);
       expect(find.text('Copied'), findsOneWidget);
       await pumpSnack(tester);
       await tester.tap(find.byIcon(Icons.more_vert));
       await settle(tester);
       await tester.tap(find.text('Export .md'));
-      await flushIo(tester);
+      await flushIo(tester,
+          until: () => find.textContaining('Exported to').evaluate().isNotEmpty);
       await settle(tester);
       expect(find.textContaining('Exported to'), findsOneWidget);
       await pumpSnack(tester);
@@ -630,7 +636,8 @@ void main() {
       await tester.tap(find.byIcon(Icons.more_vert));
       await settle(tester);
       await tester.tap(find.text('Export .md'));
-      await flushIo(tester);
+      await flushIo(tester,
+          until: () => find.textContaining('Export failed').evaluate().isNotEmpty);
       await settle(tester);
       expect(find.textContaining('Export failed'), findsOneWidget);
       await pumpSnack(tester);

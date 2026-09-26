@@ -116,7 +116,7 @@ jobs:
           flutter pub get
           flutter analyze --no-pub
           flutter test --coverage --no-pub
-          lcov --remove coverage/lcov.info \
+          lcov --ignore-errors unused --remove coverage/lcov.info \
             '**/*.g.dart' '**/*.freezed.dart' '**/l10n/**' \
             'lib/services/web_storage.dart' \
             'lib/services/sync/engine_stub.dart' \

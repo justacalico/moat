@@ -41,7 +41,7 @@ cat > altstore/apps.json <<JSON
           "version": "$VERSION",
           "date": "$NOW",
           "downloadURL": "$IPA_URL",
-          "minOSVersion": "13.0"
+          "minOSVersion": "14.0"
         }
       ]
     }

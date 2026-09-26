@@ -293,19 +293,22 @@ class _ThemeModeTile extends StatelessWidget {
     return ListTile(
       leading: const Icon(Icons.brightness_6_outlined, size: 20),
       title: Text('Theme', style: Theme.of(context).textTheme.bodyMedium),
-      trailing: SegmentedButton<ThemeMode>(
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: SegmentedButton<ThemeMode>(
         segments: const [
           ButtonSegment(value: ThemeMode.system, label: Text('Auto')),
           ButtonSegment(value: ThemeMode.light, label: Text('Light')),
           ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
         ],
-        selected: {state.settings.themeMode},
-        onSelectionChanged: (s) => state.setThemeMode(s.first),
-        showSelectedIcon: false,
-        style: ButtonStyle(
-          visualDensity: VisualDensity.compact,
-          textStyle:
-              WidgetStatePropertyAll(Theme.of(context).textTheme.labelSmall),
+          selected: {state.settings.themeMode},
+          onSelectionChanged: (s) => state.setThemeMode(s.first),
+          showSelectedIcon: false,
+          style: ButtonStyle(
+            visualDensity: VisualDensity.compact,
+            textStyle:
+                WidgetStatePropertyAll(Theme.of(context).textTheme.labelSmall),
+          ),
         ),
       ),
     );

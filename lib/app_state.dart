@@ -270,7 +270,7 @@ class AppState extends ChangeNotifier implements SyncStore {
 
   Future<void> _savePeerKeys() async {
     final entries = <Map<String, dynamic>>[];
-    for (final id in _peerKeys.keys) {
+    for (final id in List.of(_peerKeys.keys)) {
       entries.add({
         'id': id,
         'name': _peerNames[id] ?? 'device',
@@ -724,6 +724,9 @@ class AppState extends ChangeNotifier implements SyncStore {
   }
 
   void _scheduleSyncBroadcast() {
+    // Only bother waking the engine when it's running and at least one
+    // paired peer is around to receive the update.
+    if (_sync?.running != true || !peers.any((p) => p.paired)) return;
     _changeSyncDebounce?.cancel();
     _changeSyncDebounce =
         Timer(const Duration(seconds: 2), () => unawaited(syncNow()));

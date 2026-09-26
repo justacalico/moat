@@ -40,6 +40,7 @@ class IoSyncEngine implements SyncEngine {
     this.discovery,
     this.autoSyncInterval = const Duration(seconds: 20),
     this.sessionTimeout = const Duration(seconds: 20),
+    this.discoveryEnabled = true,
   });
 
   final SyncStore store;
@@ -50,8 +51,10 @@ class IoSyncEngine implements SyncEngine {
   final Duration autoSyncInterval;
   final Duration sessionTimeout;
 
-  /// Injected for tests; built lazily from real sockets in [start].
+  /// Injected for tests; built lazily from real sockets in [start] when
+  /// [discoveryEnabled] is true.
   DiscoveryService? discovery;
+  final bool discoveryEnabled;
 
   ServerSocket? _server;
   StreamSubscription<Socket>? _serverSub;
@@ -86,7 +89,7 @@ class IoSyncEngine implements SyncEngine {
     final event = SyncEvent(kind, message);
     _events.add(event);
     if (_events.length > 200) _events.removeAt(0);
-    _eventController.add(event);
+    if (!_eventController.isClosed) _eventController.add(event);
   }
 
   @override
@@ -95,7 +98,8 @@ class IoSyncEngine implements SyncEngine {
     _server = await ServerSocket.bind(InternetAddress.anyIPv4, 0);
     _serverSub = _server!.listen(_accept, onError: (_) {});
 
-    discovery ??= DiscoveryService(
+    if (discoveryEnabled) {
+      discovery ??= DiscoveryService(
       transport: await UdpTransport.bind(DiscoveryService.defaultPort,
           multicastGroup: InternetAddress(DiscoveryService.defaultGroup)),
       deviceId: deviceId,
@@ -105,8 +109,9 @@ class IoSyncEngine implements SyncEngine {
         InternetAddress(DiscoveryService.defaultGroup),
         InternetAddress('255.255.255.255'),
       ],
-    );
-    discovery!.start();
+      );
+      discovery!.start();
+    }
     _running = true;
     _autoSync = Timer.periodic(autoSyncInterval, (_) => _autoSyncTick());
     _log(SyncEventKind.info, 'listening on port $syncPort');
@@ -129,7 +134,7 @@ class IoSyncEngine implements SyncEngine {
     discovery?.prune();
     for (final peer in peers) {
       if (peer.paired && !_activeSessions.contains(peer.deviceId)) {
-        unawaited(_connectAndSync(peer));
+        unawaited(connectTo(peer));
       }
     }
   }
@@ -204,10 +209,12 @@ class IoSyncEngine implements SyncEngine {
       _log(SyncEventKind.info, 'no paired peers in reach');
       return;
     }
-    await Future.wait(targets.map(_connectAndSync));
+    await Future.wait(targets.map(connectTo));
   }
 
-  Future<void> _connectAndSync(SyncPeer peer) async {
+  /// Connect directly to a peer and run a sync session. Exposed so callers
+  /// (and tests) can sync without waiting for discovery.
+  Future<void> connectTo(SyncPeer peer) async {
     if (_activeSessions.contains(peer.deviceId)) return;
     try {
       final socket = await Socket.connect(peer.host, peer.port,
@@ -403,7 +410,7 @@ class IoSyncEngine implements SyncEngine {
 
   @override
   void dispose() {
-    stop();
+    unawaited(stop());
     discovery?.dispose();
     _eventController.close();
   }

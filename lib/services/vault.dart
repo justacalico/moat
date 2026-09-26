@@ -43,10 +43,14 @@ class VaultRecord {
 /// passphrase never touches note payloads directly and can be rotated by
 /// re-wrapping keys alone.
 class VaultService {
-  VaultService({CryptoService? crypto})
+  VaultService({CryptoService? crypto, this.kdf})
       : crypto = crypto ?? CryptoService();
 
   final CryptoService crypto;
+
+  /// KDF profile for new vaults. Stored in the record so unlock always uses
+  /// whatever the vault was created with — this only controls creation.
+  final KdfParams? kdf;
 
   static const _verifierPlaintext = 'moat-vault-v1';
 
@@ -65,7 +69,7 @@ class VaultService {
 
   Future<void> setPassphrase(String passphrase) async {
     final salt = crypto.randomBytes(16);
-    const params = KdfParams();
+    final params = kdf ?? const KdfParams();
     final key = await crypto.deriveKey(passphrase, salt, params);
     final sealed = await crypto.seal(key, utf8.encode(_verifierPlaintext));
     record = VaultRecord(
@@ -89,6 +93,8 @@ class VaultService {
       _masterKey = key;
       return true;
     } on SecretBoxAuthenticationError {
+      return false;
+    } on FormatException {
       return false;
     }
   }

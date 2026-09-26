@@ -36,6 +36,9 @@ class UdpTransport implements DatagramTransport {
     return UdpTransport._(socket);
   }
 
+  /// The local UDP port this socket is bound to.
+  int get port => _socket.port;
+
   @override
   void send(List<int> data, InternetAddress address, int port) {
     _socket.send(data, address, port);

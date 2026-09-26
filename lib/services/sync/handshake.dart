@@ -68,6 +68,14 @@ class Handshaker {
   final Duration timeout;
   final Random _random;
 
+  Future<Map<String, dynamic>> _read(ByteLink link) async {
+    try {
+      return await readClear(link.incoming, timeout);
+    } catch (_) {
+      throw const HandshakeException('connection lost');
+    }
+  }
+
   Future<Uint8List> _pubBytes() async =>
       Uint8List.fromList((await identity.extractPublicKey()).bytes);
 
@@ -88,13 +96,28 @@ class Handshaker {
               crypto.unb64(peerHello['pub'] as String),
               type: KeyPairType.x25519));
 
+  /// The auth secret (pairing code key or stored long-term key) is mixed into
+  /// the HKDF salt so neither side can complete without it — an eavesdropper
+  /// holding only the ECDH material cannot forge the proofs or the session.
   Future<SecretKey> _proofKey(
-          SecretKey ecdh, SecretKey authSecret, Uint8List salt) =>
-      crypto.hkdf(ecdh, salt, utf8.encode('moat-auth-v1'), 32);
+      SecretKey ecdh, SecretKey authSecret, Uint8List salt) async {
+    final authBytes = await authSecret.extractBytes();
+    return crypto.hkdf(
+        ecdh,
+        Uint8List.fromList([...salt, ...authBytes]),
+        utf8.encode('moat-auth-v1'),
+        32);
+  }
 
   Future<SecretKey> _sessionKey(
-          SecretKey ecdh, SecretKey authSecret, Uint8List salt) =>
-      crypto.hkdf(ecdh, salt, utf8.encode('moat-session-v1'), 32);
+      SecretKey ecdh, SecretKey authSecret, Uint8List salt) async {
+    final authBytes = await authSecret.extractBytes();
+    return crypto.hkdf(
+        ecdh,
+        Uint8List.fromList([...salt, ...authBytes]),
+        utf8.encode('moat-session-v1'),
+        32);
+  }
 
   /// Initiator side. [want] is `'sync'` for trusted peers or `'pair'` for a
   /// first-time pairing (hooks.askPairCode supplies the code).
@@ -105,7 +128,7 @@ class Handshaker {
   }) async {
     final nonceI = crypto.randomBytes(16);
     await sendClear(link, await _hello(nonceI, want));
-    final peerHello = await readClear(link.incoming, timeout);
+    final peerHello = await _read(link);
     if (peerHello['type'] != 'hello') {
       throw const HandshakeException('expected hello');
     }
@@ -137,7 +160,7 @@ class Handshaker {
       'proof': crypto.b64(await crypto.hmac(
           proofKey, [...utf8.encode('I'), ...nonceR])),
     });
-    final authReply = await readClear(link.incoming, timeout);
+    final authReply = await _read(link);
     if (authReply['type'] != 'auth') {
       throw const HandshakeException('expected auth reply');
     }
@@ -167,7 +190,7 @@ class Handshaker {
   /// and surface the generated code; for `'sync'` the peer must be trusted.
   Future<HandshakeResult> respond(
       ByteLink link, {required HandshakeHooks hooks}) async {
-    final peerHello = await readClear(link.incoming, timeout);
+    final peerHello = await _read(link);
     if (peerHello['type'] != 'hello') {
       throw const HandshakeException('expected hello');
     }
@@ -202,7 +225,7 @@ class Handshaker {
 
     final salt = _joinedSalt(nonceI, nonceR);
     final proofKey = await _proofKey(ecdh, authSecret, salt);
-    final authMsg = await readClear(link.incoming, timeout);
+    final authMsg = await _read(link);
     if (authMsg['type'] != 'auth') {
       throw const HandshakeException('expected auth');
     }

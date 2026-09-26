@@ -65,7 +65,9 @@ Future<File> exportNoteMarkdownFile(String dir, Note note,
       .replaceAll(RegExp(r'[^\w\- ]'), '')
       .trim()
       .replaceAll(' ', '-');
-  final name = safeTitle.isEmpty ? 'note-${note.id.substring(0, 8)}' : safeTitle;
+  final name = safeTitle.isEmpty
+      ? 'note-${note.id.substring(0, note.id.length < 8 ? note.id.length : 8)}'
+      : safeTitle;
   final file = File('$dir/$name.md');
   final buffer = StringBuffer()
     ..writeln('# ${title ?? note.title}')

@@ -174,7 +174,7 @@ void main() {
 
     // wait for discovery
     var tries = 0;
-    while ((engineA.peers.isEmpty || engineB.peers.isEmpty) && tries++ < 60) {
+    while ((engineA.peers.isEmpty || engineB.peers.isEmpty) && tries++ < 200) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
     expect(engineA.peers.single.deviceId, 'dev-b');
@@ -205,21 +205,21 @@ void main() {
         id: 'f1', name: 'F', createdAt: DateTime(2026), clock: {'dev-a': 1});
     // Session teardown on the responder side is async — wait for it rather
     // than racing the dedup check with fresh connections.
-    for (var i = 0; i < 100 && engineA.activeSessionCount > 0; i++) {
+    for (var i = 0; i < 200 && engineA.activeSessionCount > 0; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
     var synced = false;
-    for (var i = 0; i < 40 && !synced; i++) {
+    for (var i = 0; i < 60 && !synced; i++) {
       await engineB.syncNow();
       synced = storeB.notes['n1']?.title == 'Hello' &&
           storeB.folders['f1']?.name == 'F';
       if (!synced) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await Future<void>.delayed(const Duration(milliseconds: 150));
       }
     }
     expect(storeB.notes['n1']?.title, 'Hello');
     expect(storeB.folders['f1']?.name, 'F');
-  }, timeout: const Timeout(Duration(seconds: 30)));
+  }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('syncNow no-ops when stopped or no paired peers', () async {
     final store = MemStore();

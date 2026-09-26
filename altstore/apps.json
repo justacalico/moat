@@ -1,0 +1,23 @@
+{
+  "name": "Moat",
+  "identifier": "com.httpanimations.moat.source",
+  "iconURL": "https://gitlab.com/HttpAnimations/moat/-/raw/main/assets/icon-1024.png",
+  "apps": [
+    {
+      "name": "Moat",
+      "bundleIdentifier": "com.httpanimations.moat",
+      "developerName": "HttpAnimations",
+      "iconURL": "https://gitlab.com/HttpAnimations/moat/-/raw/main/assets/icon-1024.png",
+      "tintedIconURL": "https://gitlab.com/HttpAnimations/moat/-/raw/main/assets/icon-1024.png",
+      "subtitle": "Local-first encrypted notes",
+      "versions": [
+        {
+          "version": "nightly",
+          "date": "2026-09-26T19:09:04Z",
+          "downloadURL": "https://gitlab.com/api/v4/projects/HttpAnimations%2Fmoat/packages/generic/release-assets/nightly/moat-ios-arm64-unsigned%2Eipa",
+          "minOSVersion": "14.0"
+        }
+      ]
+    }
+  ]
+}

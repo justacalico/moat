@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="224" fill="#0D1117"/>
+  <!-- keep -->
+  <g fill="#F5F5F7">
+    <rect x="352" y="380" width="320" height="280" rx="8"/>
+    <rect x="360" y="300" width="72" height="90"/>
+    <rect x="476" y="300" width="72" height="90"/>
+    <rect x="592" y="300" width="72" height="90"/>
+  </g>
+  <!-- doorway cut -->
+  <path d="M472 660 L472 556 a40 40 0 0 1 80 0 L552 660 Z" fill="#0D1117"/>
+  <!-- moat -->
+  <path d="M240 752 q68 -34 136 0 t136 0 t136 0 t136 0" fill="none" stroke="#0A84FF" stroke-width="42" stroke-linecap="round"/>
+  <path d="M272 836 q56 -30 112 0 t112 0 t112 0 t112 0" fill="none" stroke="#64D2FF" stroke-width="36" stroke-linecap="round"/>
+</svg>

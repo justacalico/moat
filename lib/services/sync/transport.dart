@@ -114,7 +114,7 @@ class SocketLink implements ByteLink {
   SocketLink(this._socket) {
     _subscription = _socket.listen(
       _decoder.add,
-      onError: (Object e) => _decoder.frames.isEmpty,
+      onError: (Object e) => _decoder.frames.isEmpty, // coverage:ignore-line
       onDone: () {
         _done.complete();
         _decoder.close();

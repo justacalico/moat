@@ -25,10 +25,17 @@ class _EditorPageState extends State<EditorPage> {
   final _titleController = TextEditingController();
   final _bodyController = TextEditingController();
   final _bodyFocus = FocusNode();
+  late final AppState _state;
   bool _preview = false;
   String _lastSavedTitle = '';
   String _lastSavedBody = '';
   String? _loadedFor;
+
+  @override
+  void initState() {
+    super.initState();
+    _state = context.read<AppState>();
+  }
 
   @override
   void dispose() {
@@ -57,13 +64,12 @@ class _EditorPageState extends State<EditorPage> {
       _bodyController.text != _lastSavedBody;
 
   Future<void> _saveIfDirty() async {
-    if (!_dirtyContent || !mounted) return;
-    final state = context.read<AppState>();
-    final note = state.noteById(widget.noteId);
-    if (note == null || (note.locked && !state.vaultService.isUnlocked)) {
+    if (!_dirtyContent) return;
+    final note = _state.noteById(widget.noteId);
+    if (note == null || (note.locked && !_state.vaultService.isUnlocked)) {
       return;
     }
-    await state.updateNote(
+    await _state.updateNote(
       note,
       title: _titleController.text,
       body: _bodyController.text,

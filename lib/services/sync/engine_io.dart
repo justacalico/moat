@@ -62,6 +62,10 @@ class IoSyncEngine implements SyncEngine {
   final _events = <SyncEvent>[];
   final _eventController = StreamController<SyncEvent>.broadcast();
   final _activeSessions = <String>{};
+
+  /// Number of sync sessions currently in flight. Mostly for tests so they
+  /// can wait for teardown instead of racing the next connection.
+  int get activeSessionCount => _activeSessions.length;
   bool _running = false;
 
   @override
@@ -172,10 +176,11 @@ class IoSyncEngine implements SyncEngine {
   Future<void> pairWith(
       SyncPeer peer, Future<String> Function() askCode) async {
     _log(SyncEventKind.info, 'pairing with ${peer.name}…');
-    final socket = await Socket.connect(peer.host, peer.port,
-        timeout: sessionTimeout);
-    final link = SocketLink(socket);
+    SocketLink? link;
     try {
+      final socket = await Socket.connect(peer.host, peer.port,
+          timeout: sessionTimeout);
+      link = SocketLink(socket);
       final result = await Handshaker(
         crypto: crypto,
         deviceId: deviceId,
@@ -192,7 +197,7 @@ class IoSyncEngine implements SyncEngine {
       await _runSession(result.channel, result.peerId, result.peerName);
     } catch (e) {
       _log(SyncEventKind.error, 'pairing failed: $e');
-      await link.close();
+      await link?.close();
       rethrow;
     }
   }

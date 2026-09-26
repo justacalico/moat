@@ -26,7 +26,7 @@ void main() {
   });
 
   test('deriveKey is deterministic per passphrase+salt', () async {
-    const params = KdfParams(memory: 8 * 1024, iterations: 1, parallelism: 1);
+    const params = KdfParams(memory: 256, iterations: 1, parallelism: 1);
     final salt = crypto.randomBytes(16);
     final a = await crypto.deriveKey('pw', salt, params);
     final b = await crypto.deriveKey('pw', salt, params);

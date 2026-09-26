@@ -2,13 +2,15 @@ import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+import 'helpers/fakes.dart';
 import 'package:moat/models/note.dart';
 import 'package:moat/services/crypto_service.dart';
 import 'package:moat/services/vault.dart';
 
 void main() {
   test('lifecycle: set, lock, unlock, wrong passphrase', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     expect(v.status, VaultStatus.none);
     expect(v.hasVault, isFalse);
 
@@ -22,12 +24,12 @@ void main() {
   });
 
   test('record persists and reloads locked', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('pw');
     final json = v.toJson();
     expect(json, isNotNull);
 
-    final v2 = VaultService();
+    final v2 = VaultService(kdf: fastKdf);
     v2.loadJson(json);
     expect(v2.hasVault, isTrue);
     expect(v2.status, VaultStatus.locked);
@@ -38,7 +40,7 @@ void main() {
   });
 
   test('seal/open a note payload', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('pw');
     final payload = await v.seal('title', 'body text');
     final back = await v.open(payload);
@@ -47,7 +49,7 @@ void main() {
   });
 
   test('reseal keeps same wrapped key', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('pw');
     final p1 = await v.seal('t', 'b');
     final p2 = await v.reseal(p1, 't2', 'b2');
@@ -57,7 +59,7 @@ void main() {
   });
 
   test('seal throws when locked', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await expectLater(v.seal('a', 'b'), throwsStateError);
     await v.setPassphrase('pw');
     v.lock();
@@ -65,8 +67,8 @@ void main() {
   });
 
   test('open throws when locked / wrong key', () async {
-    final v1 = VaultService();
-    final v2 = VaultService();
+    final v1 = VaultService(kdf: fastKdf);
+    final v2 = VaultService(kdf: fastKdf);
     await v2.setPassphrase('pw2');
     await v1.setPassphrase('pw1');
     final p = await v1.seal('t', 'b');
@@ -79,7 +81,7 @@ void main() {
   });
 
   test('changePassphrase re-wraps note keys', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('old');
     final note = Note(
         id: 'n',
@@ -101,14 +103,14 @@ void main() {
   });
 
   test('changePassphrase requires unlocked vault', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('a');
     v.lock();
     await expectLater(v.changePassphrase('b', []), throwsStateError);
   });
 
   test('changePassphrase skips notes without payloads', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('a');
     final note = Note(
         id: 'n', title: '', body: '', createdAt: DateTime.now(),
@@ -118,7 +120,7 @@ void main() {
   });
 
   test('adoptRecord only when no vault exists', () {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     final rec = VaultRecord(
         salt: 's',
         params: const KdfParams(),
@@ -141,7 +143,7 @@ void main() {
   });
 
   test('open with unlocked note edge: utf8 decode', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('pw');
     final p = await v.seal('', '');
     final back = await v.open(p);
@@ -154,12 +156,12 @@ void main() {
   });
 
   test('unlock returns false with no record', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     expect(await v.unlock('x'), isFalse);
   });
 
   test('unlock fails on malformed verifier', () async {
-    final v = VaultService();
+    final v = VaultService(kdf: fastKdf);
     await v.setPassphrase('pw');
     final salt = v.record!.salt;
     final params = v.record!.params;

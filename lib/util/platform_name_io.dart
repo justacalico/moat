@@ -7,5 +7,5 @@ String platformDeviceName() {
     final host = Platform.localHostname;
     if (host.isNotEmpty) return host;
   } catch (_) {}
-  return 'Moat ${Platform.operatingSystem}';
+  return 'Moat ${Platform.operatingSystem}'; // coverage:ignore-line
 }

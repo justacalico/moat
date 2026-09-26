@@ -1,4 +1,4 @@
-// coverage:ignore-file — web no-op, never imported by VM tests
+// coverage:ignore-file
 import 'package:cryptography/cryptography.dart';
 
 import '../../models/peer.dart';

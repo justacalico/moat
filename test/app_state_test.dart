@@ -2,10 +2,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moat/app_state.dart';
 import 'package:moat/models/folder.dart';
 import 'package:moat/models/note.dart';
+import 'package:moat/models/peer.dart';
 import 'dart:io';
 
 import 'package:moat/services/memory_storage.dart';
+import 'package:moat/services/biometric.dart';
+import 'package:moat/services/crypto_service.dart';
 import 'package:moat/services/settings.dart';
+import 'package:moat/services/sync/engine_io.dart';
+import 'package:moat/services/vault.dart';
+import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'helpers/fakes.dart';
@@ -429,5 +435,171 @@ void main() {
       // stub engine is still injected
       expect(s.sync, isNotNull);
     });
+  });
+
+  group('init from storage', () {
+    Future<AppState> seededState(MemoryStorage storage) async {
+      SharedPreferences.setMockInitialValues(
+          {'seenWelcome': true, 'syncEnabled': false});
+      final s = AppState(
+        storage: storage,
+        settings: await Settings.load(),
+        vault: VaultService(kdf: fastKdf),
+        biometric: FakeBiometricGate(),
+        sync: FakeSyncEngine(),
+      );
+      addTearDown(s.dispose);
+      await s.init();
+      return s;
+    }
+
+    test('loads identity, notes and peer keys from storage', () async {
+      final crypto = CryptoService();
+      final storage = MemoryStorage();
+      final id = await crypto.newIdentity();
+      await storage.writeJson('identity.json', {
+        'seed': crypto.b64(await crypto.identitySeed(id)),
+        'name': 'seeded',
+      });
+      await storage.writeJson('notes/sn.json', makeNote(id: 'sn').toJson());
+      final pk = SecretKey(List<int>.generate(32, (i) => i));
+      await storage.writeJson('peers.json', {
+        'peers': [
+          {'id': 'dev-z', 'name': 'zed',
+           'key': crypto.b64(await pk.extractBytes())},
+          {'id': 'dev-y',
+           'key': crypto.b64(await pk.extractBytes())},
+        ]
+      });
+      final s = await seededState(storage);
+      expect(s.deviceName, 'seeded');
+      expect(s.noteById('sn'), isNotNull);
+      expect(s.isPeerTrusted('dev-z'), isTrue);
+      expect(s.isPeerTrusted('dev-y'), isTrue);
+      // unnamed peer falls back to 'device'
+      expect(s.ltKeyFor('dev-z'), isNotNull);
+      expect(s.ltKeyFor('nobody'), isNull);
+    });
+
+    test('null sync builds the platform engine', () async {
+      SharedPreferences.setMockInitialValues(
+          {'seenWelcome': true, 'syncEnabled': false});
+      final s = AppState(
+        storage: MemoryStorage(),
+        settings: await Settings.load(),
+        vault: VaultService(kdf: fastKdf),
+        biometric: FakeBiometricGate(),
+      );
+      addTearDown(s.dispose);
+      await s.init();
+      expect(s.sync, isA<IoSyncEngine>());
+      expect(s.sync!.supported, isTrue);
+    });
+
+    test('default biometric gate degrades without a plugin', () async {
+      SharedPreferences.setMockInitialValues({'seenWelcome': true});
+      final s = AppState(
+        storage: MemoryStorage(),
+        settings: await Settings.load(),
+        vault: VaultService(kdf: fastKdf),
+        sync: FakeSyncEngine(),
+      );
+      addTearDown(s.dispose);
+      await s.init();
+      expect(s.biometric, isA<LocalAuthGate>());
+      expect(await s.biometric.isAvailable, isFalse);
+    });
+  });
+
+  group('locked notes and vault edges', () {
+    test('updateNote on a locked note keeps ciphertext in sync', () async {
+      final s = await makeAppState(prefs: {'autoLockSeconds': 0});
+      addTearDown(s.dispose);
+      await s.setVaultPassphrase('pw');
+      final n = s.createNote();
+      await s.updateNote(n, title: 't', body: 'b');
+      await s.lockNote(n);
+      // still unlocked: update touches the wrapped plaintext path
+      await s.updateNote(n, title: 't2');
+      expect(s.displayTitle(n), 't2');
+      expect(s.canLockNotes, isTrue);
+    });
+
+    test('openNote returns false on a tampered payload', () async {
+      final s = await makeAppState(prefs: {'autoLockSeconds': 0});
+      addTearDown(s.dispose);
+      await s.setVaultPassphrase('pw');
+      final n = s.createNote();
+      await s.updateNote(n, title: 't', body: 'b');
+      await s.lockNote(n);
+      // Same length, different bytes — fails the GCM tag, not the parse.
+      final p = n.lockedPayload!;
+      final tampered = (p.ciphertext.startsWith('A') ? 'B' : 'A') +
+          p.ciphertext.substring(1);
+      n.lockedPayload = LockedPayload(
+          ciphertext: tampered,
+          nonce: p.nonce,
+          wrappedKey: p.wrappedKey,
+          keyNonce: p.keyNonce);
+      expect(await s.openNote(n), isFalse);
+    });
+
+    test('exportNoteMarkdown writes a file', () async {
+      final s = await makeAppState(prefs: {'autoLockSeconds': 0});
+      addTearDown(s.dispose);
+      final dir = Directory.systemTemp.createTempSync('moat-md');
+      (s.storage as MemoryStorage).exportDir = dir.path;
+      final n = s.createNote();
+      await s.updateNote(n, title: 'Doc', body: 'words');
+      final path = await s.exportNoteMarkdown(n);
+      expect(File(path).existsSync(), isTrue);
+    });
+
+    test('importBackup adds folders and notes', () async {
+      final a = await makeAppState(prefs: {'autoLockSeconds': 0});
+      addTearDown(a.dispose);
+      final dir = Directory.systemTemp.createTempSync('moat-bk');
+      (a.storage as MemoryStorage).exportDir = dir.path;
+      a.createFolder('Keep');
+      a.createNote();
+      final path = await a.exportBackup();
+
+      final b = await makeAppState(prefs: {'autoLockSeconds': 0});
+      addTearDown(b.dispose);
+      final res = await b.importBackup(path);
+      expect(res.notes, greaterThanOrEqualTo(1));
+      expect(res.folders, 1);
+      expect(b.folders.map((f) => f.name), contains('Keep'));
+    });
+
+    test('onSyncApplied persists and notifies', () async {
+      final s = await makeAppState(prefs: {'autoLockSeconds': 0});
+      addTearDown(s.dispose);
+      var notified = false;
+      s.addListener(() => notified = true);
+      s.onSyncApplied();
+      expect(notified, isTrue);
+    });
+
+    test('sync debounce fires syncNow once edits settle', () async {
+      final sync = FakeSyncEngine()
+        ..running = true
+        ..fakePeers = [
+          SyncPeer(
+              deviceId: 'dev-x',
+              name: 'x',
+              host: '127.0.0.1',
+              port: 1,
+              lastSeen: DateTime.now(),
+              paired: true),
+        ];
+      final s = await makeAppState(
+          prefs: {'autoLockSeconds': 0}, sync: sync);
+      addTearDown(s.dispose);
+      s.createNote();
+      await s.updateNote(s.visibleNotes.first, title: 'edited');
+      await Future<void>.delayed(const Duration(milliseconds: 2300));
+      expect(sync.syncNowCalls, greaterThanOrEqualTo(1));
+    }, timeout: const Timeout(Duration(seconds: 10)));
   });
 }

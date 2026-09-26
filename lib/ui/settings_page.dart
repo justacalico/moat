@@ -206,9 +206,9 @@ class SettingsPage extends StatelessWidget {
 
   Future<void> _import(BuildContext context) async {
     final state = context.read<AppState>();
-    final path = await PickService().pickBackupFile();
-    if (path == null || !context.mounted) return;
     try {
+      final path = await PickService.instance.pickBackupFile();
+      if (path == null || !context.mounted) return;
       final result = await state.importBackup(path);
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(

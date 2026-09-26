@@ -1,4 +1,4 @@
-// coverage:ignore-file — web-only storage, never imported by VM tests
+// coverage:ignore-file
 import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';

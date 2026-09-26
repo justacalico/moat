@@ -34,7 +34,7 @@ class MarkdownToolbar extends StatelessWidget {
           TextSelection.collapsed(offset: controller.text.length);
       return;
     }
-    final lineStart = text.lastIndexOf('\n', sel.start - 1) + 1;
+    final lineStart = sel.start == 0 ? 0 : text.lastIndexOf('\n', sel.start - 1) + 1;
     controller.text = text.replaceRange(lineStart, lineStart, prefix);
     final shift = prefix.length;
     controller.selection = TextSelection(

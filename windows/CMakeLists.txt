@@ -29,6 +29,10 @@ set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
 set(CMAKE_C_FLAGS_PROFILE "${CMAKE_C_FLAGS_RELEASE}")
 set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
+# local_auth_windows still uses the deprecated experimental coroutine API;
+# MSVC 14.51+ errors out on it. The plugin targets inherit this define.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
